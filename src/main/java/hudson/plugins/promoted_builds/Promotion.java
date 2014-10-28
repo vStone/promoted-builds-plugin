@@ -6,7 +6,7 @@ import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.Cause.UserCause;
+import hudson.model.Cause.UserIdCause;
 import hudson.model.Environment;
 import hudson.model.Node;
 import hudson.model.ParameterDefinition;
@@ -101,7 +101,8 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion>
         e.put("PROMOTED_NUMBER", Integer.toString(target.getNumber()));
         e.put("PROMOTED_ID", target.getId());
         e.put("PROMOTED_USER_NAME", getUserName());
-	 EnvVars envScm = new EnvVars();
+        e.put("PROMOTED_USER_ID", getUserId());
+        EnvVars envScm = new EnvVars();
         target.getProject().getScm().buildEnvVars( target, envScm );
         for ( Entry<String, String> entry : envScm.entrySet() )
         {
@@ -120,7 +121,7 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion>
      * @return user's name who triggered the promotion, or 'anonymous'
      */
     public String getUserName(){
-    	UserCause userClause=getCause(UserCause.class);
+    	UserIdCause userClause=getCause(UserIdCause.class);
     	if (userClause!=null && userClause.getUserName()!=null){
     		return userClause.getUserName();
     	}
@@ -134,6 +135,26 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion>
     	return "anonymous";
     }
     
+
+    /**
+     *
+     * @return user's id who triggered the promotion, or 'anonymous'
+     */
+    public String getUserId() {
+        UserIdCause userClause=getCause(UserIdCause.class);
+      if (userClause!=null && userClause.getUserId()!=null){
+        return userClause.getUserId();
+      }
+
+        //fallback to badge lookup for compatibility 
+      for (PromotionBadge badget:getStatus().getBadges()){
+            if (badget instanceof ManualCondition.Badge){
+        return ((ManualCondition.Badge) badget).getUserId();
+            }
+      }
+      return "anonymous";
+    }
+
     public List<ParameterValue> getParameterValues(){
       List<ParameterValue> values=new ArrayList<ParameterValue>(); 
       ParametersAction parametersAction=getParametersActions(this);
@@ -148,7 +169,7 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion>
         }
         return values;
       }
-      
+
       //fallback to badge lookup for compatibility 
       for (PromotionBadge badget:getStatus().getBadges()){
         if (badget instanceof ManualCondition.Badge){
